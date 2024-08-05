@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="Board">
+	
+	<sql id="boardSearch">
+		<if test="searchType != null and searchType == 'title'">
+			and (bo_title like '%'||#{searchWord}||'%')
+		</if>
+		<if test="searchType != null and searchType == 'writer'">
+			and (bo_writer like '%'||#{searchWord}||'%')
+		</if>
+	</sql>
+	
+	<insert id="insertBoard" parameterType="boardVO" useGeneratedKeys="true">
+		<selectKey keyProperty="boNo" resultType="int" order="BEFORE">
+			select seq_board.nextval from dual
+		</selectKey>
+		insert into board(
+			bo_no, bo_title, bo_content, bo_writer, bo_date
+		) values(
+			#{boNo}, #{boTitle}, #{boContent}, #{boWriter}, sysdate  
+		)
+	</insert>
+	
+	<update id="incrementByHit" parameterType="int">
+		update board
+		set
+			bo_hit = bo_hit + 1
+		where bo_no = #{boNo}
+	</update>
+	
+	<select id="selectBoard" parameterType="int" resultType="boardVO">
+		select
+			bo_no, bo_title, bo_content, bo_writer, bo_date, bo_hit
+		from board
+		where bo_no = #{boNo}
+	</select>
+	
+	<select id="selectBoardList_" resultType="boardVO">
+		select
+			bo_no, bo_title, bo_content, bo_writer, bo_date, bo_hit
+		from board
+		order by bo_no desc
+	</select>
+	
+	<select id="selectBoardCount" parameterType="pagingVO" resultType="int">
+		select count(bo_no)
+		from board
+		where 1=1
+		<include refid="boardSearch"/>
+	</select>
+	
+	<select id="selectBoardList" parameterType="pagingVO" resultType="boardVO">
+		select
+			b.*
+		from (
+			select
+				a.*, row_number() over (order by a.bo_no desc) rnum
+			from (
+				select
+					bo_no, bo_title, bo_content, bo_writer, bo_date, bo_hit
+				from board
+				where 1=1
+				<include refid="boardSearch"/>
+				order by bo_no desc
+			) a
+		) b
+		<![CDATA[
+			where b.rnum >= #{startRow} and b.rnum <= #{endRow}
+		]]>
+	</select>
+	<!-- <![CDATA[ ?? ]]> 안에 써야 부등호가 정상적으로 인식됨 그렇지 않으면 태그로 인지함-->
+	
+	<update id="updateBoard" parameterType="boardVO">
+		update board
+		set
+			bo_title = #{boTitle},
+			bo_content = #{boContent},
+			bo_date = sysdate
+		where bo_no = #{boNo}
+	</update>
+	
+	<delete id="deleteBoard" parameterType="int">
+		delete from board
+		where bo_no = #{boNo}
+	</delete>
+	
+</mapper>
